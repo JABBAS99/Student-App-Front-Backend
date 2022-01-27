@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lesson App</title>
+    <script src="https://unpkg.com/vue"></script>
+    <!-- <script src="lesson.js"></script> -->
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+        integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm" crossorigin="anonymous">
+    <!-- CSS only (bootstrap) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+</head>
+
+<body>
+    <div id="app" class="text-center">
+        <button class="btn btn-secondary" v-on:click='showCheckout' v-show='showCart'>{{cartItemCount}} <span><i
+                    class="fas fa-shopping-basket"></i></span> Checkout</button>
+        <div v-if='showProduct'>
+            <label>Search Lesson:</label>
+            <input type="text" v-model="search" placeholder="Search Lesson.." />
+            <button class="btn btn-success" v-on:click='sortPriceByLow'> <span><i
+                        class="fas fa-chevron-down"></i></span> SortByPriceLow</button>
+            <button class="btn btn-success" v-on:click='sortPriceByHigh'> <span><i class="fas fa-chevron-up"></i></span>
+                SortByPriceHigh</button>
+            <div v-for='lesson in filteredLessons' class="text-center">
+                <figure>
+                    <img v-bind:src="lesson.Image" class="img-thumbnail" height="200px" width="200px">
+                </figure>
+                <i :class="`fa ${lesson.Icon}`"></i>
+                <h3>Subject: {{lesson.Subject}}</h3>
+                <h3>Location: {{lesson.Location}}</h3>
+                <p>Price: £{{lesson.Price}}</p>
+                <p>Spaces: {{lesson.Spaces}}</p>
+                <button class="btn btn-primary" v-on:click='addcart(lesson)' :disabled='!canAddToCart(lesson)'>Add To
+                    Cart</button>
+                <span v-if='lesson.Spaces == 0'>All out!</span>
+                <br>
+                <br>-
+            </div>
+        </div>
+        <div v-else class="text-center">
+            <div v-show="backtoLessons">
+                <button class="btn btn-secondary" v-on:click='showCheckout'>{{cartItemCount}} <span><i
+                            class="fas fa-arrow-left"></i></span> Back To Lessons</button>
+            </div>
+            <h1>Checkout</h1>
+
+            <h1>Lessons in basket</h1>
+
+            <div v-for="lesson in cart">
+                <img v-bind:src="lessons[lesson].Image" height="200px" width="200px">
+                <h3>{{ lessons[lesson].Subject }}</h3>
+                <h3>{{ lessons[lesson].Location }}</h3>
+                <h3>£{{ lessons[lesson].Price }}</h3>
+                <button class="btn btn-danger" @click="removeFromCart(lesson)"><i class="fa fa-trash"></i>
+                    Delete</button>
+                <br>
+                <br>
+            </div>
+
+            <h1>Checkout</h1>
+            <p>
+                <strong>First Name:</strong>
+                <input class="form-control" v-model='order.firstName'>
+            </p>
+            <p>
+                <strong>Phone Number:</strong>
+                <input class="form-control" v-model='order.phoneNumber'>
+            </p>
+            <div v-show="!validateName || !validateNumber">
+                <p>Error: Please make sure name is only letters and Phone is only numbers</p>
+            </div>
+            <h3>Order information</h3>
+            <p>First name: {{order.firstName}}</p>
+            <p>Phone Number: {{order.phoneNumber}}</p>
+            <div v-show="validateNumber && validateName">
+                <button class="btn btn-success" v-on:click='placeOrder'>Place Order</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Sending a GET request to the backend server 
+        fetch('http://localhost:5000/lessons', { method: 'GET' })
+            .then(res => res.json())
+            .then(lessons => {
+                // Getting the actual response from the server, which is the array of lessons
+                var webstore = new Vue({
+                    el: '#app',
+                    data: {
+                        search: '',
+                        showProduct: true,
+                        lessons: lessons,
+                        cart: [],
+                        order: {
+                            firstName: '',
+                            phoneNumber: ''
+                        }
+                    },
+                    methods: {
+                        addcart(lesson) {
+                            this.cart.push(lesson.id)
+                            console.log(this.cart)
+                            lesson.Spaces -= 1
+                        },
+                        showCheckout() {
+                            this.showProduct = this.showProduct ? false : true
+                        },
+                        canAddToCart(lesson) {
+                            return lesson.Spaces > 0
+                        },
+                        cartCount(id) {
+                            let count = 0
+                            for (let i = 0; i < this.cart.length; i++) {
+                                if (this.cart[i] === id) {
+                                    count++
+                                }
+                            }
+                            return count
+                        },
+                        sortPriceByLow() {
+                            function compare(a, b) {
+                                if (a.Price > b.Price) return 1;
+                                if (a.Price < b.Price) return -1;
+                                return 0;
+                            }
+                            return this.lessons.sort(compare);
+                        },
+                        sortPriceByHigh() {
+                            function compare(a, b) {
+                                if (a.Price > b.Price) return -1;
+                                if (a.Price < b.Price) return 1;
+                                return 0;
+                            }
+                            return this.lessons.sort(compare);
+                        },
+                        placeOrder() {
+                            alert('Order submitted!!!')
+                        },
+                        removeFromCart(lesson) {
+                            this.cart.pop(this.lessons[lesson])
+                            this.lessons[lesson].Spaces += 1
+                        }
+                    },
+                    computed: {
+                        cartItemCount() {
+                            return this.cart.length || ''
+                        },
+                        showCart() {
+                            return this.cart.length > 0
+                        },
+                        backtoLessons() {
+                            return this.cart.length == 0
+                        },
+                        validateName() {
+                            return (/^[a-zA-Z]+$/.test(this.order.firstName))
+                        },
+                        validateNumber() {
+                            return (/^[0-9]+$/.test(this.order.phoneNumber))
+                        },
+                        filteredLessons: function () {
+                            return this.lessons.filter((lesson) => {
+                                return lesson.Subject.toLowerCase().match(this.search.toLowerCase()) ||
+                                    lesson.Location.toLowerCase().match(this.search.toLowerCase()) ||
+                                    lesson.Price.toString().match(this.search.toString())
+                            })
+                        }
+                    }
+                })
+
+            })
+            .catch(err => {
+                console.log("ERROR: ", err);
+            });
+
+        //* Lesson yahan pr fetch request krni hai 
+    </script>
+</body>
+
+</html>
